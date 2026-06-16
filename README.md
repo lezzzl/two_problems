@@ -78,3 +78,71 @@ model4 = nn.Sequential(
 Видим, что наилучшее качество на тесте выбилось у мелкой сети, а также у глубокой с GeLu и AdamW
 Средняя ошибка около 0.46, что по предсказаниям по 10балльной шкале с шагом 0.1 довольно неплохо, учитывая, что эти оценки довольно субективны в рамках одного отзыва. Дальнейшее улучшение качества предсказания возможно с помощью добавления новых признаков, которые будут иметь корреляцию сильнее, а также более точный подбор архитектуры модели для решения задачи
 
+
+## Задача 2. Глубинное обучение на неструктурированных данных 
+### Датасет
+**Dataset of 50K Movie Reviews**
+
+### Колонки
+- review: The full text content of the movie
+- sentiment: Binary label indicating the overall sentiment of the review - either "positive" or "negative"
+
+### Бизнес-задача
+В первой задаче мы прогнозировали зрительский рейтинг фильма по его характеристикам
+Цель второй задачи при помощи моделей определять является ли отзыв о фильме положительным или отрицательным
+В итоге это позволит компании:
+- анализировать, как зрители реально воспринимают фильмы
+- находить фильмы с положительной реакцикй аудитории, которые стоит продвигать или снимать
+
+### Выбранные модели
+1. Простая небольшая сетка
+```
+self.embedding = nn.Embedding(num_embeddings=dict_size, embedding_dim=embedding_dim, padding_idx=pad_idx)
+
+self.classifier = nn.Sequential(
+        nn.Linear(embedding_dim, hidden_dim),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(hidden_dim, num_classes)
+    )
+```
+
+2. крутая LSTM, крутая потому что двунаправленная
+
+```
+self.embedding = nn.Embedding(num_embeddings=dict_size, embedding_dim=embedding_dim, padding_idx=pad_idx)
+
+self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=num_layers, batch_first=True, bidirectional=True)
+
+self.classifier = nn.Sequential(
+    nn.Linear(hidden_dim * 2, hidden_dim),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(hidden_dim, num_classes)
+)
+```
+3. Небольшой distilBert на 66 млн параметров
+
+```
+self.bert = AutoModel.from_pretrained(model)
+self.dropout = nn.Dropout(0.4)
+
+self.classifier = self.classifier = nn.Sequential(
+    nn.Linear(self.bert.config.hidden_size, 256),
+    nn.ReLU(),
+    nn.Dropout(0.2),
+    nn.Linear(256, 2)
+)
+```
+
+### Вывод
+Лучшей моделью оказался BERT c accuracy 0.92, потому что она и предназначена для понимания контекста и тональности, выбить качество получше этим бертом не получилось, возможно стоит взять побольше берта или поэксперементтировать с классификатором
+
+## Доп задача - суммаризатор
+
+Суммаризатор логически отлично дополняет первые две задачи проекта
+
+Он позволит еще глубде анализировать фильмы и отзывы:
+- понимать основную мысль отзыва без прочтения его полностью
+- выделять причины, почему фильм понравился или не понравился
+- использовать причины при принятии решений о продвижении фильмов пользователям или фильмопроизводстве
